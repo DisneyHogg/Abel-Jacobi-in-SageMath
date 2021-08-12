@@ -2904,7 +2904,8 @@ class RiemannSurface(object):
         
             sage: from sage.schemes.riemann_surfaces.riemann_surface import RiemannSurface
             sage: R.<x,y> = QQ[]
-            sage: S = RiemannSurface(y^2-x^3+1)
+            sage: p = 100
+            sage: S = RiemannSurface(y^2-x^3+1, prec=p)
             sage: divisor = [(-1, (Infinity, 0)), (1, (1, 0))]
             sage: AJ = S.abel_jacobi(divisor)
             sage: AJx2 = [2*z for z in AJ]
@@ -2912,7 +2913,7 @@ class RiemannSurface(object):
             2.4286506478875809114000865640
             sage: bool(S.reduce_over_period_lattice(AJx2).norm()<1e-10)
             True
-            sage: S = RiemannSurface(y^2-x^4+1)
+            sage: S = RiemannSurface(y^2-x^4+1, prec=p)
             sage: divisor = [(-1, (-1, 0)), (1, (1, 0))]
             sage: AJ = S.abel_jacobi(divisor)
             sage: AJx2 = [2*z for z in AJ]
@@ -3342,9 +3343,9 @@ class RiemannSurface(object):
             sage: S = RiemannSurface(y^2-x^3+1)
             sage: D = sum(S.places_at_branch_locus())
             sage: S.divisor_to_divisor_list(D)
-            [(1, (-1.00000000000000, 0.000000000000000)),
-             (1, (0.500000000000000 - 0.866025403784439*I, 0.000000000000000)),
-             (1, (0.500000000000000 + 0.866025403784439*I, 0.000000000000000))]
+            [(1, (1.00000000000000, 0.000000000000000)),
+             (1, (-0.500000000000000 - 0.866025403784439*I, 0.000000000000000)),
+             (1, (-0.500000000000000 + 0.866025403784439*I, 0.000000000000000))]
 
         .. TODO::
 

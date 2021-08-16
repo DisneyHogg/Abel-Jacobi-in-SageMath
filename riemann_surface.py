@@ -544,11 +544,12 @@ class RiemannSurface(object):
     in preparation). Note this method of bounding on circular domains is also 
     implemented in :meth:`_compute_delta`. The net result of this bounding is 
     that one can know (an upper bound on) the number of nodes required to achieve
-    a certain error. This means that for any given integral, approximately half
+    a certain error. This means that for any given integral, assuming that the 
+    same number of nodes is required by both methods in order to achieve the 
+    desired error (not necessarily true in practice), approximately half
     the number of integrand evaluations are required. When the required number
     of nodes is high, e.g. when the precision required is high, this can make
-    the ``'rigorous'`` method much faster. However, the ``'rigorous'`` method 
-    has a higher overhead due to the need to calculate the bounds, and it does
+    the ``'rigorous'`` method much faster. However, the ``'rigorous'`` method does
     not benefit as much from the caching of the ``nodes`` method over multiple
     integrals. The result of this is that, for calls of :meth:`matrix_of_integral_values`
     if the computation is 'fast', the heuristic method may outperform the
@@ -561,24 +562,44 @@ class RiemannSurface(object):
         sage: Sr = RiemannSurface(f, prec=p, integration_method='rigorous')
         sage: from sage.numerical.gauss_legendre import nodes
         sage: nodes.cache.clear()
-        sage: %time Rh = Sh.riemann_matrix() # random | long time (2 seconds)
-        CPU times: user 2.38 s, sys: 36 µs, total: 2.38 s
-        Wall time: 2.38 s
+        sage: %time Rh = Sh.riemann_matrix() # random | long time (1 second)
+        CPU times: user 795 ms, sys: 0 ns, total: 795 ms
+        Wall time: 799 ms
         sage: nodes.cache.clear()
-        sage: %time Rr = Sr.riemann_matrix() # random | long time (3 seconds)
-        CPU times: user 2.67 s, sys: 66 µs, total: 2.67 s
-        Wall time: 2.67 s
-        sage: p = 200
+        sage: %time Rr = Sr.riemann_matrix() # random | long time (2 seconds)
+        CPU times: user 1.75 s, sys: 0 ns, total: 1.75 s
+        Wall time: 1.75 s
+        sage: p = 500
         sage: Sh = RiemannSurface(f, prec=p, integration_method='heuristic')
         sage: Sr = RiemannSurface(f, prec=p, integration_method='rigorous')
         sage: nodes.cache.clear()
-        sage: %time Rh = Sh.riemann_matrix() # random | long time (7 seconds)
-        CPU times: user 7.12 s, sys: 4.01 ms, total: 7.13 s
-        Wall time: 7.13 s
+        sage: %time Rh = Sh.riemann_matrix() # random | long time (8 seconds)
+        CPU times: user 8.43 s, sys: 0 ns, total: 8.43 s
+        Wall time: 8.43 ss
         sage: nodes.cache.clear()
-        sage: %time Rr = Sr.riemann_matrix() # random | long time (5 seconds)
-        CPU times: user 4.91 s, sys: 9 µs, total: 4.91 s
-        Wall time: 4.91 s
+        sage: %time Rr = Sr.riemann_matrix() # random | long time (10 seconds)
+        CPU times: user 9.69 s, sys: 0 ns, total: 9.69 s
+        Wall time: 9.69 s
+
+    Note that for the above curve, the branch points are evenly distributed, and
+    hence the implicit assumptions in the heuristic method are more sensible, 
+    meaning that a higher precision is required to see the heuristic method 
+    being significantly slower than the rigorous method. For a worse conditioned
+    curve, this effect is more pronounced::
+
+        sage: q = 1/10
+        sage: f = y^2-(x^2-2*x+1+q^2)*(x^2+2*x+1+q^2)
+        sage: p = 500
+        sage: Sh = RiemannSurface(f, prec=p, integration_method='heuristic')
+        sage: Sr = RiemannSurface(f, prec=p, integration_method='rigorous')
+        sage: nodes.cache.clear()
+        sage: %time Rh = Sh.riemann_matrix() # random | long time (7 second)
+        CPU times: user 7.45 s, sys: 0 ns, total: 7.45 s
+        Wall time: 7.44 s
+        sage: nodes.cache.clear()
+        sage: %time Rr = Sr.riemann_matrix() # random | long time (2 second)
+        CPU times: user 1.5 s, sys: 0 ns, total: 1.5 s
+        Wall time: 1.5 s
 
     This disparity in timings can get increasingly worse, and testing has shown
     that even for random quadrics the heuristic method can be as bad as 30 times
@@ -678,7 +699,7 @@ class RiemannSurface(object):
                 self._differentials_branch_locus += self._CCz(x[0](self._CCz.gen(),
                                                                    0)).roots(multiplicities=False)
         # We add these branchpoints to the existing.
-        self.branch_locus = self.branch_locus+self._differentials_branch_locus
+        #self.branch_locus = self.branch_locus+self._differentials_branch_locus
         # We now want to also check whether Infinity is a branch point of any 
         # of the differentials.
         # This will be useful when calculating the Abel-Jacobi map. 
@@ -1068,7 +1089,7 @@ class RiemannSurface(object):
 
             sage: g = z^3*w + w^3 + z
             sage: T = RiemannSurface(g)
-            sage: z0 = T._vertices[2]*(0.9) - T._vertices[5]*(0.1)
+            sage: z0 = T._vertices[2]*(0.9) + 0.3*I
             sage: epsilon = 0.5
             sage: oldw = T.w_values(T._vertices[2])
             sage: T._determine_new_w(z0, oldw, epsilon)
@@ -1146,12 +1167,12 @@ class RiemannSurface(object):
             sage: z0 = S._vertices[0]
             sage: epsilon = 0.1
             sage: oldw = S.w_values(z0)[0]
-            sage: neww = S._newton_iteration(z0,oldw,epsilon); neww #abs tol 0.00000001
+            sage: neww = S._newton_iteration(z0,oldw,epsilon); neww # abs tol 0.00000001
             -0.934613146929672 + 2.01088055918363*I
 
         Which should be exactly the same as the w-value we started with::
 
-            sage: oldw - neww #abs tol 0.00000001
+            sage: oldw - neww # abs tol 0.00000001
             0.000000000000000
 
         Here is an example where we exit the epsilon bound. This approach is
@@ -1160,7 +1181,7 @@ class RiemannSurface(object):
 
             sage: g = z^3*w + w^3 + z
             sage: T = RiemannSurface(g)
-            sage: z0 = T._vertices[2]*(0.9) - T._vertices[5]*(0.1)
+            sage: z0 = T._vertices[2]*(0.9) + 0.3*I
             sage: epsilon = 0.5
             sage: oldw = T.w_values(T._vertices[2])[1]
             sage: T._newton_iteration(z0, oldw, epsilon)
@@ -1259,10 +1280,10 @@ class RiemannSurface(object):
             sage: f = z^3*w + w^3 + z
             sage: S = RiemannSurface(f)
 
-        Compute the edge permutation of (2, 9) on the Voronoi diagram::
+        Compute the edge permutation of (1, 2) on the Voronoi diagram::
 
-            sage: S._edge_permutation((2, 9))
-            (1,2)
+            sage: S._edge_permutation((1, 2))
+            (0,2,1)
 
         This indicates that while traversing along the direction of `(2, 9)`,
         the 2nd and 3rd layers of the Riemann surface are interchanging.
@@ -1350,28 +1371,21 @@ class RiemannSurface(object):
             sage: f = z^3*w + w^3 + z
             sage: S = RiemannSurface(f)
             sage: G = S.monodromy_group(); G
-            [(0,2,1), (0,1), (1,2), (0,2), (0,2), (1,2), (0,2), (0,1), (), (), (), (), (), (), (), (1,2)]
+            [(0,1,2), (0,1), (0,2), (1,2), (1,2), (1,2), (0,1), (0,2), (0,2)]
 
         The permutations give the local monodromy generators for the branch
         points::
 
             sage: list(zip(S.branch_locus + [unsigned_infinity], G)) #abs tol 0.0000001
-            [(0.000000000000000, (0,2,1)),
+            [(0.000000000000000, (0,1,2)),
              (-1.31362670141929, (0,1)),
-             (-0.819032851784253 - 1.02703471138023*I, (1,2)),
-             (-0.819032851784253 + 1.02703471138023*I, (0,2)),
-             (0.292309440469772 - 1.28069133740100*I, (0,2)),
+             (-0.819032851784253 - 1.02703471138023*I, (0,2)),
+             (-0.819032851784253 + 1.02703471138023*I, (1,2)),
+             (0.292309440469772 - 1.28069133740100*I, (1,2)),
              (0.292309440469772 + 1.28069133740100*I, (1,2)),
-             (1.18353676202412 - 0.569961265016465*I, (0,2)),
-             (1.18353676202412 + 0.569961265016465*I, (0,1)),
-             (-1.45036146591896, ()),
-             (-0.904285583009352 - 1.13393825501392*I, ()),
-             (-0.904285583009352 + 1.13393825501392*I, ()),
-             (0.322735787970535 - 1.41399787587734*I, ()),
-             (0.322735787970535 + 1.41399787587734*I, ()),
-             (1.30673052799829 - 0.629288255904939*I, ()),
-             (1.30673052799829 + 0.629288255904939*I, ()),
-             (Infinity, (1,2))]
+             (1.18353676202412 - 0.569961265016465*I, (0,1)),
+             (1.18353676202412 + 0.569961265016465*I, (0,2)),
+             (Infinity, (0,2))]
 
         We can check the ramification by looking at the cycle lengths and verify
         it agrees with the Riemann-Hurwitz formula::
@@ -1445,7 +1459,7 @@ class RiemannSurface(object):
             sage: R.<z,w> = QQ[]
             sage: g = w^2 - z^4 + 1
             sage: S = RiemannSurface(g)
-            sage: S.homology_basis() #random
+            sage: S.homology_basis() # random
             [[(1, [(3, 1), (5, 0), (9, 0), (10, 0), (2, 0), (4, 0),
                 (7, 1), (10, 1), (3, 1)])],
              [(1, [(8, 0), (6, 0), (7, 0), (10, 0), (2, 0), (4, 0),
@@ -1715,7 +1729,7 @@ class RiemannSurface(object):
 
             sage: M = S.riemann_matrix()
             sage: differentials = S.cohomology_basis()
-            sage: S.simple_vector_line_integral([(0,0),(1,0)], differentials) #abs tol 0.00000001
+            sage: S.simple_vector_line_integral([(0, 0), (1, 0)], differentials) #abs tol 0.00000001
             (1.14590610929717e-16 - 0.352971844594760*I)
 
         .. NOTE::
@@ -1884,7 +1898,7 @@ class RiemannSurface(object):
         RB = self._R.base_ring()
         P = PolynomialRing(RB, 'Z')
         k = P.fraction_field()
-        KP = PolynomialRing(k, 'W') #W->fraction field
+        KP = PolynomialRing(k, 'W') # W->fraction field
         fZW = self.f(P.gen(0), KP.gen(0))
         L = k.extension(fZW, 'Wb')
         dfdw_L = self._dfdw(P.gen(0), L.gen(0))
@@ -1974,7 +1988,7 @@ class RiemannSurface(object):
             values if :meth:`homology_basis` has not initialized them. 
 
             Note also that the  data of the differentials is contained within
-            ``bounding_data``. It is, howver, still advantageous to have this 
+            ``bounding_data``. It is, however, still advantageous to have this 
             be a separate argument, as it lets the user supply a fast-callable
             version of the differentials, to significantly speed up execution 
             of the integrand calls, and not have to re-calculate these 
@@ -2039,7 +2053,7 @@ class RiemannSurface(object):
         output = V(0)
 
         # The purpose of this loop is as follows: We know we will be using 
-        # Gauss-Legendre quadrature to do the integral, and results from Neu2018
+        # Gauss-Legendre quadrature to do the integral, and results from [Neu2018]_
         # tell us an upper bound on the number of nodes required to achieve a 
         # given error bound for this quadrature, provided we have a bound for 
         # the integrand on a certain ellipse in the complex plane. The method 
@@ -2048,12 +2062,14 @@ class RiemannSurface(object):
         # from bounding with an ellipse to bounding with a circle. The size of 
         # these circles will be constrained by the distance to the nearest point 
         # where the integrand blows up, i.e. the nearest branchpoint. Basic 
-        # benchmarking showed that it was a more reliably faster method to split 
+        # benchmarking showed that it was in general a faster method to split 
         # the original line segment into multiple smaller line segments, and 
         # compute the contribution from each of the line segments bounding with
-        # a single circle. The following loop does exactly this, repeatedly 
-        # bisecting a segment if it is not possible to cover it entirely in a 
-        # ball which encompasses an appropriate ellipse.  
+        # a single circle, the benefits mainly coming when the curve is poorly
+        # conditioned s.t. the branch points are close together. The following 
+        # loop does exactly this, repeatedly bisecting a segment if it is not 
+        # possible to cover it entirely in a ball which encompasses an appropriate
+        # ellipse.  
         while ball_stack:
             ct, rt = ball_stack.pop()
             cz = (1-ct)*z0+ct*z1 # This is the central z-value of our ball.
@@ -2140,7 +2156,7 @@ class RiemannSurface(object):
             sage: m = S.matrix_of_integral_values(B)
             sage: parent(m)
             Full MatrixSpace of 1 by 2 dense matrices over Complex Field with 53 bits of precision
-            sage: (m[0,0]/m[0,1]).algdep(3).degree() #curve is CM, so the period is quadratic
+            sage: (m[0,0]/m[0,1]).algdep(3).degree() # curve is CM, so the period is quadratic
             2
 
         .. NOTE::
@@ -2249,8 +2265,6 @@ class RiemannSurface(object):
             True
 
         """
-        #differentials = [fast_callable(omega, domain=self._CC)
-        #                 for omega in self.cohomology_basis()]
         differentials = self.cohomology_basis()
         return self.matrix_of_integral_values(differentials, self._integration_method)
 
@@ -3097,8 +3111,12 @@ class RiemannSurface(object):
             V_index = find_closest_element(zP, self._vertices)
             b_index = find_closest_element(zP, self.branch_locus)
             b = self.branch_locus[b_index]
-        
-            d1 = self._CC(1e-2)*max(b.abs() for b in self.branch_locus)
+            #bl = self.branch_locus+self._differentials_branch_locus
+            #b_index = find_closest_element(zP, bl)
+            #b = bl[b_index]
+         
+            scale = max(b.abs() for b in self.branch_locus)
+            d1 = self._CC(1e-2)*scale
 
             # We choose the first vertex we want to go to.
             # If the closest vertex is closer than the nearest branch point, just take that vertex
@@ -3108,17 +3126,17 @@ class RiemannSurface(object):
                 region = self.voronoi_diagram.regions[self.voronoi_diagram.point_region[b_index]]
                 args = [(self._vertices[i]-zP).argument() - (b-zP).argument() for i in region]
                 suitable_vertex_indices = [region[i] 
-                                           for i in range(len(region)) if args[i].abs()>self._RR.pi()/2]
+                                           for i in range(len(region)) if args[i].abs()-self._RR.pi()/2>=-self._RR(1e-15)]
                 suitable_vertices = [self._vertices[i] for i in suitable_vertex_indices]
                 if suitable_vertices==[]:
                     raise ValueError("There is no satisfactory choice of V for zP={}".format(zP))
                 V_index = suitable_vertex_indices[find_closest_element(zP, suitable_vertices)]
             #####
             zV = self._vertices[V_index]
-            d_edge = (zP, zV)
 
             if (zP-b).abs() >= d1 or b in self._differentials_branch_locus:
                 wP_index = find_closest_element(wP, self.w_values(zP))
+                d_edge = (zP, zV)
                 u_edge = ((zP, wP_index), (zV, ))
                 initial_continuation = self.homotopy_continuation(d_edge)
                 AJ = -line_int(u_edge)
@@ -3128,6 +3146,23 @@ class RiemannSurface(object):
             else:
                 zs = zP
                 ws = wP
+
+                #####
+                # Here we need a block of code to change the vertex if the path
+                # from zP to zV would go through a ramification point of the integrands
+                fl = [c for c in self._differentials_branch_locus if not c==self._CC(Infinity)]
+                ts = [((c-zP)*(zV-zP).conjugate()).real()/(zP-zV).norm()**2 
+                      for c in fl]
+                ds = [(fl[i]-zP-ts[i]*(zV-zP)).abs()
+                      for i in range(len(ts)) if (ts[i]>=0 and ts[i]<=1)]
+                while (len(ds)>=1 and min(ds)<delta):
+                    V_index = suitable_vertex_indices.pop()
+                    zV = self._vertices[V_index]
+                    ts = [((c-zP)*(zV-zP).conjugate()).real()/(zP-zV).norm()**2 
+                          for c in fl]
+                    ds = [(fl[i]-zP-ts[i]*(zV-zP)).abs()
+                          for i in range(len(ts)) if (ts[i]>=0 and ts[i]<=1)]
+                #####
 
                 while self._dfdw(zs, ws).abs()==0:
                     zs = zs+delta*(zV-zs)/(zV-zs).abs()/2

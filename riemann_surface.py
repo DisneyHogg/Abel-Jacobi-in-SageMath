@@ -59,32 +59,31 @@ In fact it is an order in a number field::
     True
 
 We can look at an extended example of the Abel-Jacobi functionality. We will 
-show that the sum of the intersections of a bitangent to a quadratic is a 
-half-canonical divisor. We will use the Edge quartic as the example, which has
-bitangent `x=1/2`:: 
+demonstrate a particular half-canonical divisor on Klein's Curve, known in 
+the literature.:: 
 
-    sage: f = 25*(x^4+y^4+1) - 34*(x^2*y^2+x^2+y^2)
-    sage: S = RiemannSurface(f)
+    sage: f = x^3*y + y^3 + x
+    sage: S = RiemannSurface(f, integration_method='rigorous')
     sage: BL = S.places_at_branch_locus(); BL
-    [Place (x - 2, (x - 2)*y, y^2 - 17/5, y^3 - 17/5*y),
-     Place (x + 2, (x + 2)*y, y^2 - 17/5, y^3 - 17/5*y),
-     Place (x - 1/2, (x - 1/2)*y, y^2 - 17/20, y^3 - 17/20*y),
-     Place (x + 1/2, (x + 1/2)*y, y^2 - 17/20, y^3 - 17/20*y),
-     Place (x^4 - 34/25*x^2 + 1, y, y^2, y^3),
-     Place (x^4 - 34/25*x^2 + 1, (x^4 - 34/25*x^2 + 1)*y, y^2 - 34/25*x^2 - 34/25, y^3 + (-34/25*x^2 - 34/25)*y)]
+    [Place (x, y, y^2),
+     Place (x^7 + 27/4, y + 4/9*x^5, y^2 + 4/3*x^3),
+     Place (x^7 + 27/4, y - 2/9*x^5, y^2 + 1/3*x^3)]
 
 We can read off out the output of ``places_at_branch_locus`` to choose our
 divisor, and we can calculate the canonical divisor using curve functionality::
 
-    sage: D = 1*BL[2]
+    sage: P0 = 1*BL[0]
     sage: from sage.schemes.curves.constructor import Curve
     sage: C = Curve(f)
     sage: F = C.function_field()
-    sage: K = (F(x).differential()).divisor()
+    sage: K = (F(x).differential()).divisor() - F(f.derivative(y)).divisor()
+    sage: Pinf, Pinf_prime = C.places_at_infinity()
+    sage: if K-3*Pinf-1*Pinf_prime: Pinf, Pinf_prime = (Pinf_prime, Pinf);
+    sage: D = P0 + 2*Pinf - Pinf_prime
 
 Note we could check using exact techniques that `2D=K`::
 
-    sage: Z = K-2*D
+    sage: Z = K - 2*D
     sage: (Z.degree()==0, len(Z.basis_differential_space())==S.genus, len(Z.basis_function_space())==1)
     (True, True, True)
 
@@ -93,7 +92,7 @@ We can also check this using our Abel-Jacobi functions::
     sage: avoid = C.places_at_infinity()
     sage: Zeq, _ = S.strong_approximation(Z, avoid) 
     sage: Zlist = S.divisor_to_divisor_list(Zeq)
-    sage: AJ = S.abel_jacobi(Zlist)  # long time (50 seconds)
+    sage: AJ = S.abel_jacobi(Zlist)  # long time (1 second)
     sage: S.reduce_over_period_lattice(AJ).norm() < 1e-10  # long time
     True
 
@@ -1644,7 +1643,7 @@ class RiemannSurface(object):
             sage: d_edge = tuple(u[0] for u in u_edge)
             sage: u_edge = [(S._vertices[i], j) for i, j in u_edge]
             sage: initial_continuation = S._L[d_edge] 
-            sage: g, d = S.make_zw_interpolator(u_edge, initial_continuation);
+            sage: g, d = S.make_zw_interpolator(u_edge, initial_continuation)
             sage: all(f(*g(i*0.1)).abs() < 1e-13 for i in range(10))
             True
             sage: abs((g(1)[0]-g(0)[0]) - d) < 1e-13
@@ -1661,7 +1660,7 @@ class RiemannSurface(object):
         z_start, z_end = downstairs_edge
         z_start = self._CC(z_start)
         z_end = self._CC(z_end)
-        if initial_continuation==None:
+        if initial_continuation is None:
             initial_continuation = self.homotopy_continuation(downstairs_edge)
         currL = initial_continuation
         windex = upstairs_edge[0][1]
@@ -2864,14 +2863,14 @@ class RiemannSurface(object):
         fc_dmp_list = [fast_callable(mp.derivative(CCzg.gen(1)), domain=self._CC) 
                        for mp in mp_list]
 
-        if prec==None:
+        if prec is None:
             prec = self._prec
         # tau here is playing the role of the desired error. 
         tau = self._RR(2)**(-prec+3)
         ONE = self._RR(1)
         LAMBDA = self._RR.pi()/2
 
-        if cutoff_individually==None:
+        if cutoff_individually is None:
             cutoffs = [0]
             cutoff_individually = False
         else:
@@ -3207,7 +3206,7 @@ class RiemannSurface(object):
         r"""
         Return the Abel-Jacobi map of ``divisor``. 
         
-        Returns a representative of the Abel-Jacobi map of a divisor with basepoint
+        Return a representative of the Abel-Jacobi map of a divisor with basepoint
         ``self._basepoint``.
         
         INPUT:
@@ -3236,7 +3235,7 @@ class RiemannSurface(object):
             sage: divisor = [(-1, (-1, 0)), (1, (1, 0))]
             sage: AJ = S.abel_jacobi(divisor)  # long time (15 seconds)
             sage: AJxp = [p*z for z in AJ]  # long time 
-            sage: bool(S.reduce_over_period_lattice(AJx2).norm()<1e-7)  # long time
+            sage: bool(S.reduce_over_period_lattice(AJxp).norm()<1e-7)  # long time
             True
         """
         ans = 0
@@ -3324,7 +3323,7 @@ class RiemannSurface(object):
         PM = self.period_matrix()
 
         if normalised:
-            AM = PM[:,0:g]
+            AM = PM[:, 0:self.genus]
             AInv = numerical_inverse(AM)
             PM = AInv*PM
             
@@ -3372,7 +3371,7 @@ class RiemannSurface(object):
         r"""
         Return the places above the branch locus. 
 
-        Returns a list of the of places above the branch locus. This must be 
+        Return a list of the of places above the branch locus. This must be 
         done over the base ring, and so the places are given in terms of the 
         factors of the discriminant. Currently, this method only works when 
         ``self._R.base_ring()==QQ`` as for other rings, the function field 
@@ -3461,8 +3460,6 @@ class RiemannSurface(object):
         KC = C.function_field()
         g0, g1 = self._R.gens()
         Kb = FunctionField(K, str(g0))
-        Pz = PolynomialRing(K, g0)
-        Pw = PolynomialRing(K, g1)
         MO = Kb.maximal_order()
 
         D_base = -sum(S)
@@ -3552,9 +3549,6 @@ class RiemannSurface(object):
             g0 = self._R(gs[0])
             gis = [sum([PZ(gi.list()[i])*RF.gen()**i 
                         for i in range(len(gi.list()))]) for gi in gs[1:]]
-            #gs = [self._R(gi) for gi in gs]
-            #g0 = gs[0]
-            #gis = gs[1:]
         
             rs = self._CCz(g0).roots()
             rys = []
@@ -3562,15 +3556,14 @@ class RiemannSurface(object):
             for r, m in rs:
                 ys = []
                 for gi in gis:
-                    ers = [gi(y, r).abs() for y in ys]
-                    #ers =  [gi(r,y).abs() for y in ys]
-                    try:
-                        ers = min(ers)
-                    except:
+                    # This test is a bit clunky, it surely can be made more efficient. 
+                    if len(ys):
+                        ers = min([gi(y, r).abs() for y in ys])
+                    else:
                         ers = 1
+
                     if not ers<=eps:
                         poly = self._CCw(gi(self._CCw.gen(0), r))
-                        #poly = self._CCw(gi(r, self._CCw.gen(0)))
                         if poly==0:
                             nys = []
                         else:
